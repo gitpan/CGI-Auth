@@ -1,6 +1,11 @@
-$Id: Changes,v 1.7 2004/01/10 19:13:29 cmdrwalrus Exp $
+$Id: Changes,v 1.8 2004/01/28 07:04:02 cmdrwalrus Exp $
 
 Revision history for CGI::Auth.
+
+3.00	27 January 2004
+	- Version numbers are now restricted to major.minor, to be a proper 'floating point' number, as suggested in perlmodlib.
+	- I had to increase the major version number because of it.  From now on, CPAN.pm should have no problems discerning which version is newer.
+	- The session file name can now be passed to new() in the 'sessfile' parameter, so that it can be stored in a CGI::Session variable (or something else) and doesn't *have* to be passed by cookies or CGI parameters.
 
 2.4.4	10 January 2004
 	Added two methods: sfparam_name and sfparam_value, for a more flexible way of passing the session file parameter around.

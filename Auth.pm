@@ -1,4 +1,4 @@
-# $Id: Auth.pm,v 1.16 2004/01/10 20:36:00 cmdrwalrus Exp $
+# $Id: Auth.pm,v 1.17 2004/01/28 07:05:46 cmdrwalrus Exp $
 
 package CGI::Auth;
 
@@ -7,7 +7,7 @@ use strict;
 use Carp;
 
 use vars qw/$VERSION/;
-$VERSION = '2.4.4';
+$VERSION = '3.00';
 
 # This delimiter cannot be a regex special character, unfortunately, since it 
 # is used with split.  So, for instance, the pipe (|) is not allowed, as well 
@@ -354,6 +354,7 @@ sub init
 	# Parameters in an anonymous hash.
 	# All config options are passed here... no config file!
 	$self->{cgi} = $param->{-cgi};
+    $self->{sessfile} = $param->{-sessfile};
 	$self->{admin} = $param->{-admin} ? 1 : 0;
 
 	$self->{authdir} = $param->{-authdir};
@@ -396,8 +397,8 @@ sub init
 				eval { require CGI::Simple; };
 				if ( $@ )
 				{
-					# If neither are given, there's gonna be trouble!
-					croak "CGI or CGI::Simple is required by CGI::Auth";
+					# If neither is available, there's gonna be trouble!
+					croak "CGI::Auth needs CGI or CGI::Simple, but neither is available";
 				}
 				else
 				{
@@ -493,7 +494,8 @@ sub check
 {
 	my ($self) = @_;
 
-	my $session_file = $self->{cgi}->param('auth_sessfile');
+	my $session_file = $self->{sessfile} || $self->{cgi}->param('auth_sessfile');
+
 	if ($session_file)
 	{
 		# Untaint.
@@ -1434,7 +1436,29 @@ would require modification of this module.
 
 =head1 SEE ALSO
 
-L<CGI>, L<HTML::Template>
+=over 4
+
+=item *
+
+L<CGI>
+
+=item *
+
+L<CGI::Simple>
+
+=item *
+
+L<HTML::Template>
+
+=item *
+
+L<CGI::Session>
+
+=item *
+
+L<CGI::Session::Auth>
+
+=back
 
 =head1 BUGS
 
