@@ -8,9 +8,9 @@ CGI::Auth - Simple session-based password authentication for CGI applications
 
 =head1 SYNOPSIS
 
-    require Auth;
+    require CGI::Auth;
 
-    my $auth = new Auth({
+    my $auth = new CGI::Auth({
         -authdir		=> 'auth',
         -formaction		=> "myscript.pl",
         -authfields		=> [
@@ -22,13 +22,13 @@ CGI::Auth - Simple session-based password authentication for CGI applications
 
 =head1 DESCRIPTION
 
-C<Auth> provides password authentication for web-based applications.  It uses 
-server-based session files which are referred to by a parameter in all links 
-and forms inside the scripts guarded by C<Auth>.
+C<CGI::Auth> provides password authentication for web-based applications.  It 
+uses server-based session files which are referred to by a parameter in all 
+links and forms inside the scripts guarded by C<CGI::Auth>.
 
-At the beginning of each script using Auth.pm, an C<Auth> object should be 
+At the beginning of each script using Auth.pm, an C<CGI::Auth> object should be 
 created and its C<check> method called.  When this happens, C<check> checks for 
-a session file CGI parameter.  If that parameter exists and has a matching 
+a 'session_file' CGI parameter.  If that parameter exists and has a matching 
 session file in the session directory, C<check> returns, and the rest of the 
 script can execute.
 
@@ -289,7 +289,7 @@ I will be happy to hear them.
 
 =head1 COPYRIGHT
 
-Copyright E<copy> 2001, 2002 Chad Wallace.
+Copyright (c) 2001, 2002 Chad Wallace.
 All rights reserved.
 
 This module may be distributed and/or modified under the same terms as Perl
@@ -304,7 +304,7 @@ use strict;
 # Variables defined by configuration file.
 use vars qw/$VERSION/;
 
-$VERSION = '2.4';
+$VERSION = '2.4.1';
 
 # Constructor
 sub new 

@@ -9,3 +9,8 @@ Revision history for CGI::Auth.
 
 2.4	27 March 2003
 	Added storing of IP address in session file.  Now sessions cannot be hijacked from another location.
+
+2.4.1	17 July 2003
+	Some documentation edits.
+	Added a simple test suite.
+
