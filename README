@@ -1,0 +1,42 @@
+CGI/Auth version 2.40
+=====================
+
+CGI::Auth provides password authentication for web-based applications.  
+It uses server-based session files which are referred to by a parameter 
+in all links and forms inside the scripts guarded by CGI::Auth.
+
+Auth.pm is written in pure Perl, so it should be portable across 
+operating systems.  It was originally designed on Windows NT, and has 
+also been used extensively (and successfully) on Linux.
+
+Upon installation, the documentation can be viewed by issuing the 
+command 'perldoc CGI::Auth'.
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make install
+
+Also, take a look in the extra directory for sample files to help you
+get started.
+
+DEPENDENCIES
+
+CGI.pm version 2.0.  
+
+    It will probably work with any version, since I don't use a lot of 
+    CGI.pm's functionality, but I developed it with 2.7 and didn't want 
+    to go too far back.  It's probably best to use the latest version 
+    of CGI.pm anyway.
+
+COPYRIGHT AND LICENCE
+
+Copyright (c) 2001, 2002 Chad Wallace.
+All rights reserved.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+

@@ -1,0 +1,11 @@
+Revision history for CGI::Auth.
+
+2.2	Mon Aug 19, 2002
+	Converted to h2xs in preparation for uploading to CPAN.
+
+2.3	Sat Aug 31, 2002
+	Added support for HTML::Template templates
+	Fixed a few bugs.
+
+2.4	27 March 2003
+	Added storing of IP address in session file.  Now sessions cannot be hijacked from another location.
