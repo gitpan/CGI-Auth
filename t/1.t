@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w    
 
-# $Id: 1.t,v 1.3 2003/10/30 19:42:29 cmdrwalrus Exp $
+# $Id: 1.t,v 1.4 2003/12/14 01:25:55 cmdrwalrus Exp $
 
 use Test::Simple tests => 4;
 
@@ -111,7 +111,6 @@ else
 }
 ok( $test, "login test script" );
 
-__END__
 # Now let's clean up the mess we've made.
 for ( @files )
 {

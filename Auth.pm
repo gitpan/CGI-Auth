@@ -1,4 +1,4 @@
-# $Id: Auth.pm,v 1.13 2003/10/30 19:32:34 cmdrwalrus Exp $
+# $Id: Auth.pm,v 1.16 2004/01/10 20:36:00 cmdrwalrus Exp $
 
 package CGI::Auth;
 
@@ -7,7 +7,7 @@ use strict;
 use Carp;
 
 use vars qw/$VERSION/;
-$VERSION = '2.4.3';
+$VERSION = '2.4.4';
 
 # This delimiter cannot be a regex special character, unfortunately, since it 
 # is used with split.  So, for instance, the pipe (|) is not allowed, as well 
@@ -673,12 +673,46 @@ sub data
 
 =pod
 
-=item C<formfield>
+=item C<sfparam_name>
+
+Returns the name of the session file parameter (i.e., 'auth_sessfile').
+
+=cut
+
+sub sfparam_name
+{
+	'auth_sessfile';
+}
+
+=pod
+
+=item C<sfparam_value>
+
+Returns the value of the session file parameter (i.e., the name of the session file).
+
+=cut
+
+sub sfparam_value
+{
+	my $self = shift;
+
+	$self->data('sess_file');
+}
+
+=pod
+
+=item C<formfield> B<(deprecated)>
+
+B<(deprecated)> - Use of C<urlfield> and C<formfield> is discouraged in favour 
+of C<sfparam_name> and C<sfparam_value> because the latter provide much more 
+flexibility.  For example, they allow you to create elements that are 
+XHTML-compliant, whereas the data returned from C<formfield> is only valid for 
+HTML 4.
 
 Returns the session file parameter as a hidden input field suitable for 
 inserting in a E<lt>FORME<gt>, e.g.: 
 
-    '<input type=hidden name="auth_sessfile" value="DBEEL87CXV7H">'
+    '<input type="hidden" name="auth_sessfile" value="DBEEL87CXV7H">'
 
 =cut
 
@@ -686,15 +720,21 @@ sub formfield
 {
 	my $self = shift;
 	
-	my $name = 'auth_sessfile';
-	my $value = $self->data('sess_file');
+	my $name = $self->sfparam_name;
+	my $value = $self->sfparam_value;
 
-	return qq(<input type=hidden name="$name" value="$value">);
+	return qq(<input type="hidden" name="$name" value="$value">);
 }
 
 =pod
 
-=item C<urlfield>
+=item C<urlfield> 
+
+B<(deprecated)> - Use of C<urlfield> and C<formfield> is discouraged in favour 
+of C<sfparam_name> and C<sfparam_value> because the latter provide much more 
+flexibility.  For example, they allow you to create elements that are 
+XHTML-compliant, whereas the data returned from C<formfield> is only valid for 
+HTML 4.
 
 Returns the session file parameter as a field suitable for tacking onto the end 
 of an URL (such as in a link), e.g.: 
@@ -707,8 +747,8 @@ sub urlfield
 {
 	my $self = shift;
 
-	my $name = 'auth_sessfile';
-	my $value = $self->data('sess_file');
+	my $name = $self->sfparam_name;
+	my $value = $self->sfparam_value;
 
 	return qq($name=$value);
 }
@@ -1183,7 +1223,8 @@ sub CreateSessionFile
 	my $sessfilename;
 
 	# Verify format and untaint.
-	$ENV{REMOTE_ADDR} =~ /([\dA-F\.:]+)/;		# IPv4 or IPv6 address.
+    my $env_ra = $ENV{REMOTE_ADDR} || '';
+	$env_ra =~ /([\dA-F\.:]+)/;		# IPv4 or IPv6 address.
 	my $remoteaddr = $1 || '';
 
 	do
