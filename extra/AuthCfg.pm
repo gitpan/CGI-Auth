@@ -1,3 +1,5 @@
+# $Id: AuthCfg.pm,v 1.2 2003/10/02 06:30:10 cmdrwalrus Exp $
+
 package AuthCfg;
 
 use vars qw/$authcfg/;

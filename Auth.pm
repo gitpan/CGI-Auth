@@ -1,4 +1,18 @@
+# $Id: Auth.pm,v 1.13 2003/10/30 19:32:34 cmdrwalrus Exp $
+
 package CGI::Auth;
+
+use strict;
+
+use Carp;
+
+use vars qw/$VERSION/;
+$VERSION = '2.4.3';
+
+# This delimiter cannot be a regex special character, unfortunately, since it 
+# is used with split.  So, for instance, the pipe (|) is not allowed, as well 
+# as the dash (-), caret (^), dot (.), etc...
+use constant DELIMITER => ':';
 
 =pod
 
@@ -45,6 +59,8 @@ Before anything can be done with C<CGI::Auth>, an object must be created:
 
     my $auth = new CGI::Auth( \%options );
 
+=head2 Parameters to C<new>
+
 The C<new> method creates and configures a C<CGI::Auth> object using 
 parameters that are passed via a hash reference that can/should contain the 
 following items (optional ones are indicated):
@@ -60,6 +76,9 @@ extra overhead of creating another object can be avoided.  If your script is
 going to use CGI.pm, it is most efficient to create the CGI object and pass it 
 to C<CGI::Auth>, rather than both your script and Auth having to create 
 separate objects.
+
+Note:  As of version 2.4.3, C<CGI::Auth> can now be used with C<CGI::Simple>.  
+This hasn't been tested thoroughly yet, so use caution if you decide to do so.
 
 =item C<-admin>
 
@@ -121,63 +140,11 @@ The template must contain a form for the user to fill out, and it is
 recommended that the form not contain any elements with names beginning with 
 'auth_', since these are reserved for C<CGI::Auth> fields.  
 
-The template should include the following C<HTML::Template> items.  These are 
-case-insensitive.  See the C<HTML::Template> documentation for more information.
+A sample template file (C<login.html>) is included in the extra subdirectory of 
+this package.
 
-B<Template Variables>
-
-=over 4
-
-=item C<Message>
-
-A message to the user, such as "Login failed", "Session expired", etc...
-
-NOTE: This variable might be left blank when the form is created.  So don't
-depend on it having a value.
-
-=item C<Form_Action>
-
-The 'action' property of the form that submits the authentication information.
-
-=item C<Button_Name>
-
-The 'name' property of the submit button on the form.  The tag for the button 
-should look something like this:
-
-    <input type=submit name="<TMPL_VAR Name=Button_Name>" value="Submit">
-
-The 'value' property of the submit button can be anything.
-
-=back
-
-B<Template Loops>
-
-=over 4
-
-=item C<Auth_Fields>
-
-Provides variables for each required Auth field.  These are the fields which 
-will be filled in by the user when logging in.  The following variables are 
-provided:
-
-=over 4
-
-=item C<Display_Name>
-
-The display name of the field, e.g., "User Name" or "Password".
-
-=item C<Input_Name>
-
-The 'name' property of the text input for the field.
-
-=item C<Input_Type>
-
-The type, 'text' or 'password', of the input, depending on whether this
-field is hidden or not.
-
-=back
-
-=back
+For a list of what should be included in the template, see 
+L<Template Variables> and L<Template Loops> below.  
 
 =item C<-logintmplpath>
 
@@ -247,96 +214,115 @@ I<(optional, default = 60 * 15, 15 minutes)>
 
 The timeout value in seconds after which an unused session file will expire.
 
+=item C<-cgiprune>
+
+I<(optional, default = false)>
+
+Whether to allow calls to prune in CGI mode.  If your CGI scripts need (or 
+want) to delete old session files, this will have to be set to true.  I can't 
+think of any particular reason not to allow this, but it isn't allowed by 
+default.
+
+=item C<-md5pwd>
+
+I<(optional, default = false)>
+
+Whether to use an MD5 hash for hidden fields in the user data file.  If false, 
+the Perl built-in C<crypt> is used twice (via the C<DoubleCrypt> sub below), so 
+hidden fields are restricted to 16 characters.  If true, MD5 hashes are used, 
+and there is no length restriction for hidden fields.
+
+If this option is changed, the user data file will have to be recreated using 
+MD5 hashes, so it's best to make this decision at the beginning.
+
+Using MD5 hashes will result in a slight performance hit when logging in.  This 
+will probably not be noticeable at all.
+
 =back
 
-=head1 METHODS
+=head2 Template Variables
+
+These template variables are required.  The names of these are case-insensitive 
+by default.  See L<HTML::Template> for more information.
 
 =over 4
 
-=item C<check>
+=item C<Message>
 
-Ensures authentication.  If the session file is not present or has expired, a 
-login form is presented to the user.  A call to this method should occur in 
-every script that must be secured.
+A message to the user, such as "Login failed", "Session expired", etc...
 
-=item C<data>
+NOTE: This variable might be left blank when the form is created.  So don't
+depend on it having a value.
 
-Returns a given data field.  The field's ID is passed as the parameter, and the
-data is returned.  The special field 'sess_file' returns the name of the
-current session file in the C<-sessdir> directory.
+=item C<Form_Action>
 
-=item C<endsession>
+The 'action' property of the form that submits the authentication information.
 
-Deletes a user's session file so that he must log in again to gain access.
+=item C<Button_Name>
 
-=item C<urlfield>
+The 'name' property of the submit button on the form.  The tag for the button 
+should look something like this:
 
-Returns the session file parameter as a field suitable for tacking onto the end 
-of an URL (such as in a link), e.g.: 
+    <input type=submit name="<TMPL_VAR Name=Button_Name>" value="Submit">
 
-    'auth_sessfile=DBEEL87CXV7H'.
-
-=item C<formfield>
-
-Returns the session file parameter as a hidden input field suitable for 
-inserting in a E<lt>FORME<gt>, e.g.: 
-
-    '<input type=hidden name="auth_sessfile" value="DBEEL87CXV7H">'
+The 'value' property of the submit button can be anything.
 
 =back
 
-=head1 NOTE ON SECURITY
+=head2 Template Loops
 
-Any hidden fields such as passwords are sent over the network in clear 
-text, so anyone with low-level access to the network (such as an ISP 
-owner or a lucky/skilled hacker) could read the passwords and gain 
-access to your application.  CGI::Auth has no control over this since 
-it is currently a server-side-only solution.
+These loops must exist in the template.  The names of these are case-insensitive 
+by default.  See L<HTML::Template> for more information.
 
-If your application must be fully secured, an encryption layer such as 
-HTTPS should be used to encrypt the session so that passwords cannot be 
-snooped by unauthorized individuals.
+=over 4
 
-=head1 SEE ALSO
+=item C<Auth_Fields>
 
-L<CGI>, L<HTML::Template>
+Provides variables for each required Auth field.  These are the fields which 
+will be filled in by the user when logging in.  The following variables are 
+provided:
 
-=head1 BUGS
+=over 4
 
-C<CGI::Auth> doesn't use cookies, so it is left up to the script author to 
-ensure that auth data (i.e., the session file) is passed around consistently 
-through all links and entry forms.
+=item C<Display_Name>
 
-=head1 AUTHOR
+The display name of the field, e.g., "User Name" or "Password".
 
-C. Chad Wallace, cmdrwalrus@canada.com
+=item C<Input_Name>
 
-If you have any suggestions, comments or bug reports, please send them to me.  
-I will be happy to hear them.
+The 'name' property of the text input for the field.
 
-=head1 COPYRIGHT AND LICENCE
+=item C<Input_Type>
 
-Copyright (c) 2001, 2002, 2003 C. Chad Wallace.
-All rights reserved.
+The type, 'text' or 'password', of the input, depending on whether this
+field is hidden or not.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+=back
 
-THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED 
-WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF 
-MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+=back
+
+=head1 PUBLIC METHODS
+
+There are two groups of public methods in CGI::Auth.  The CGI-mode methods are 
+called from CGI scripts for the purposes of authenticating a user and managing 
+sessions.  The command-line methods are used only in command-line scripts, 
+such as the authman.pl sample userbase manager script.  The latter methods 
+will abort execution if they are run in a CGI environment.
+
+=head2 Initialization Methods
+
+These are used for creating a C<CGI::Auth> object.
+
+=over 4
+
+=item C<new>
+
+Constructor.  It accepts as a parameter a hash reference holding named 
+options.  For a list and descriptions of these options, see 
+L<Parameters to C<new>>.
 
 =cut
 
-use Carp;
-
-use strict;
-
-use vars qw/$VERSION/;
-
-$VERSION = '2.4.2';
-
-# Constructor
 sub new 
 {
 	my $proto = shift;
@@ -349,6 +335,15 @@ sub new
 	return $self;
 }
 
+=pod
+
+=item C<init>
+
+Performs processing of options passed to C<new>.  This should not be called 
+directly.
+
+=cut
+
 # Called by new--all parameters to new are passed off to init for processing.
 sub init
 {
@@ -359,7 +354,7 @@ sub init
 	# Parameters in an anonymous hash.
 	# All config options are passed here... no config file!
 	$self->{cgi} = $param->{-cgi};
-	$self->{admin} = $param->{-admin};
+	$self->{admin} = $param->{-admin} ? 1 : 0;
 
 	$self->{authdir} = $param->{-authdir};
 	$self->{sessdir} = $param->{-sessdir};
@@ -381,6 +376,9 @@ sub init
 	$self->{formaction} = $param->{-formaction};
 	$self->{authfields} = $param->{-authfields};
 	$self->{timeout} = $param->{-timeout};
+	$self->{cgiprune} = $param->{-cgiprune} ? 1 : 0;
+	$self->{validchars} = $param->{-validchars};
+	$self->{md5pwd} = $param->{-md5pwd} ? 1 : 0;
 
 	if ($self->{admin})
 	{
@@ -388,8 +386,31 @@ sub init
 	}
 	else
 	{
-		require CGI;
-		$self->{cgi} = UNIVERSAL::isa($self->{cgi}, 'CGI') ? $self->{cgi} : new CGI;
+		unless ( UNIVERSAL::isa( $self->{cgi}, 'CGI' ) || UNIVERSAL::isa( $self->{cgi}, 'CGI::Simple' ) )
+		{
+			# Default to CGI if none is given.
+			eval { require CGI; };
+			if ( $@ )
+			{
+				# If CGI is not available, try CGI::Simple.
+				eval { require CGI::Simple; };
+				if ( $@ )
+				{
+					# If neither are given, there's gonna be trouble!
+					croak "CGI or CGI::Simple is required by CGI::Auth";
+				}
+				else
+				{
+					# Got CGI::Simple, so create an object of it.
+					$self->{cgi} = CGI::Simple->new;
+				}
+			}
+			else
+			{
+				# Got CGI, so create an object of it.
+				$self->{cgi} = new CGI;
+			}
+		}
 	}
 
 	unless ($self->{authdir} && ($self->{admin} || $self->{formaction}) && $self->{authfields})
@@ -407,6 +428,12 @@ sub init
 	$self->{sessdir}		= 'sess'		unless ($self->{sessdir});
 	$self->{userfile}		= 'user.dat'	unless ($self->{userfile});
 	$self->{timeout}		= 60 * 15		unless ($self->{timeout});
+	$self->{validchars}		||= '\w\d -_.';
+	if ( -1 != index( $self->{validchars}, DELIMITER ) )
+	{
+		&carp( "Auth::init - Delimiter character '" . DELIMITER . "' cannot be included in validchars" );
+		return 0;
+	}
 
 	for (@{$self}{qw/sessdir userfile logintmpl loginheader loginfooter/})
 	{
@@ -443,6 +470,25 @@ sub init
 	return 1;
 }
 
+=pod
+
+=back
+
+=head2 CGI-mode Methods
+
+These methods are called from CGI scripts.
+
+=over 4
+
+=item C<check>
+
+Ensures authentication.  If the session file is not present or has expired, a 
+login form is presented to the user.  A call to this method should occur in 
+every script that must be secured, before the script prints B<anything> to the 
+browser.
+
+=cut
+
 sub check
 {
 	my ($self) = @_;
@@ -474,59 +520,73 @@ sub check
 	}
 	elsif (defined $self->{cgi}->param('auth_submit'))
 	{
-		my $field0 = $self->{cgi}->param('auth_' . $self->{authfields}->[0]->{id});
-		my @userdata = $self->GetUserData($field0);
+		my $authfield0 = $self->{authfields}->[0];
+		my $field0 = $self->{cgi}->param( 'auth_' . $authfield0->{id} );
+		my @userdata = $self->GetUserData( $field0 );
 		# Make sure GetUserData found the user.
-		if (not @userdata)
+		if ( not @userdata )
 		{
-			$self->PrintLoginForm("Authentication failed!  Check login information and try again.");
-			exit(0);
+			$self->PrintLoginForm( "Authentication failed!  Check login information and try again." );
+			&carp( "Auth::check - Invalid '" . $authfield0->{display} . "' field" );
+			exit( 0 );
 		}
 
-		my $failed = 0;
 		# Verify required fields in form data with those in @userdata.
-		FIELD: for my $idx (1 .. @{$self->{authfields}} - 1)
-		{
-			if ($self->{authfields}->[$idx]->{required})
+		eval { 
+			for my $idx ( 1 .. @{ $self->{authfields} } - 1 )
 			{
-				my $formvalue = $self->{cgi}->param('auth_' . $self->{authfields}->[$idx]->{id});
-				if ($self->{authfields}->[$idx]->{hidden})
+				my $authfield = $self->{authfields}->[$idx];
+				if ( $authfield->{required} )
 				{
-					# Check against crypted userdata.
-					if (DoubleCrypt($formvalue, $userdata[$idx]) ne $userdata[$idx])
+					my $formvalue = $self->{cgi}->param( 'auth_' . $authfield->{id} );
+					if ( $authfield->{hidden} )
 					{
-						++$failed;
-						last FIELD;
+						# Check against crypted userdata.
+						if ( $self->{md5pwd} )
+						{
+							# MD5 hash.
+							if ( MD5Crypt( $formvalue ) ne $userdata[$idx] )
+							{
+								die "MD5 mismatch on '" . $authfield->{display} . "' field";
+							}
+						}
+						else 
+						{
+							# Double crypt().
+							if ( DoubleCrypt( $formvalue, $userdata[$idx] ) ne $userdata[$idx] )
+							{
+								die "crypt() mismatch on '" . $authfield->{display} . "' field";
+							}
+						}
 					}
-				}
-				else
-				{
-					# Check against uncrypted userdata.
-					if ($userdata[$idx] ne $formvalue)
+					else
 					{
-						++$failed;
-						last FIELD;
+						# Check against uncrypted userdata.
+						if ( $userdata[$idx] ne $formvalue )
+						{
+							die "Mismatch on '" . $authfield->{display} . "' field";
+						}
 					}
 				}
 			}
-		}
-
-		if ($failed)
+		}; 
+		if ( $@ )
 		{
-			$self->PrintLoginForm("Authentication failed!  Check login information and try again.");
-			exit(0);
+			$self->PrintLoginForm( "Authentication failed!  Check login information and try again." );
+			&carp( "Auth::check - $@" );
+			exit( 0 );
 		}
 		else
 		{
-			if ($self->{sess_file} = $self->CreateSessionFile($field0))
+			if ( $self->{sess_file} = $self->CreateSessionFile( $field0 ) )
 			{
-				return $self->setdata(@userdata);
+				return $self->setdata( @userdata );
 			}
 			else
 			{
-				$self->PrintLoginForm("A session file could not be created.  You may not be able to log in at this time.");
-				&carp("Auth::check - Could not create session file");
-				exit(0);
+				$self->PrintLoginForm( "A session file could not be created.  You may not be able to log in at this time." );
+				&carp( "Auth::check - Could not create session file" );
+				exit( 0 );
 			}
 		}
 	}
@@ -537,9 +597,17 @@ sub check
 	}
 }
 
-# Returns 1 if session file deleted successfully, 
-# 0 if an error occurred, or
-# -1 if the session file did not exist.
+=pod
+
+=item C<endsession>
+
+Deletes the session file so that the user must log in again to gain access.
+
+Returns 1 if session file deleted successfully, 0 if an error occurred ($! will 
+contain the error), or -1 if the session file did not exist.
+
+=cut
+
 sub endsession
 {
 	my $self = shift;
@@ -553,6 +621,14 @@ sub endsession
 		return -1;
 	}
 }
+
+=pod
+
+=item C<setdata>
+
+Sets auth data fields.
+
+=cut
 
 sub setdata
 {
@@ -572,6 +648,16 @@ sub setdata
 	return 1;
 }
 
+=pod
+
+=item C<data>
+
+Returns a given data field.  The field's ID is passed as the parameter, and the
+data is returned.  The special field 'sess_file' returns the name of the
+current session file in the C<-sessdir> directory.
+
+=cut
+
 sub data
 {
 	my $self = shift;
@@ -585,6 +671,17 @@ sub data
 	return $self->{authdata}->{$key};
 }
 
+=pod
+
+=item C<formfield>
+
+Returns the session file parameter as a hidden input field suitable for 
+inserting in a E<lt>FORME<gt>, e.g.: 
+
+    '<input type=hidden name="auth_sessfile" value="DBEEL87CXV7H">'
+
+=cut
+
 sub formfield
 {
 	my $self = shift;
@@ -594,6 +691,17 @@ sub formfield
 
 	return qq(<input type=hidden name="$name" value="$value">);
 }
+
+=pod
+
+=item C<urlfield>
+
+Returns the session file parameter as a field suitable for tacking onto the end 
+of an URL (such as in a link), e.g.: 
+
+    'auth_sessfile=DBEEL87CXV7H'.
+
+=cut
 
 sub urlfield
 {
@@ -605,22 +713,32 @@ sub urlfield
 	return qq($name=$value);
 }
 
-#--- 'command-line' member functions - for user maintenance.
-# These functions cannot be run as a CGI...  
-# Use them only in command-line programs as an administrator.
+=pod
 
-# adduser
-#
-# The parameters are data values for the @authfields.  
-# For example:
-#	$auth->adduser('KAM', 'smokey');  # Branchname, Password
+=back
+
+=head2 Command-line Methods
+
+These methods are used for user maintenance.  They cannot be run under a CGI 
+environment.  Use them only in command-line programs as an administrator (or as 
+a user with write access to the user data file).
+
+=over 4
+
+=item C<adduser>
+
+The parameters are an ordered list of data values for the @authfields.  For 
+example:
+
+	$auth->adduser('KAM', 'smokey');  # Branchname, Password
+
+=cut
+
 sub adduser
 {
 	my $self = shift;
 
 	&DenyCGI;
-
-	my $salt = join '', ('.', '_', 0..9, 'A'..'Z', 'a'..'z')[rand 64, rand 64];
 
 	my @userdata = @_;
 	&croak("Bad user data") if (@userdata != @{$self->{authfields}});
@@ -630,19 +748,35 @@ sub adduser
 		or return 0;
 	for (my $idx = 0; $idx < @userdata; ++$idx)
 	{
-		if ($self->{authfields}->[$idx]->{hidden})
+		my $authfield = $self->{authfields}->[$idx];
+		if ( $authfield->{hidden} )
 		{
-			if (length $userdata[$idx] > 16)
+			if ( $self->{md5pwd} )
 			{
-				&croak("Hidden field '" . $self->{authfields}->[$idx]->{display} . "' cannot have length greater than 16 characters");
+				$userdata[$idx] = MD5Crypt( $userdata[$idx] );
 			}
-			# Store encrypted.
-			$userdata[$idx] = DoubleCrypt($userdata[$idx], $salt);
+			else
+			{
+				if ( length $userdata[$idx] > 16 )
+				{
+					&croak( "Hidden field '" . $authfield->{display} . "' cannot have length greater than 16 characters when using crypt" );
+				}
+				# Store encrypted.
+				$userdata[$idx] = DoubleCrypt( $userdata[$idx], join '', ('.', '_', 0..9, 'A'..'Z', 'a'..'z')[rand 64, rand 64] );
+			}
 		}
 	}
-	print USER join ('|', @userdata), "\n";
+	print USER join( DELIMITER, @userdata ), "\n";
 	close USER;
 }
+
+=pod
+
+=item C<listusers>
+
+Prints a list of users in the user file.
+
+=cut
 
 sub listusers
 {
@@ -653,11 +787,19 @@ sub listusers
 	open USER, "< " . $self->{userfile} or return;
 	while (<USER>)
 	{
-		my ($br) = split /\|/, $_, 2;
+		my ($br) = split( DELIMITER, $_, 2 );
 		print "$br\n";
 	}
 	close USER;
 }
+
+=pod
+
+=item C<viewuser>
+
+Prints details for one user.  The parameter is the user's 'field 0' value.
+
+=cut
 
 sub viewuser
 {
@@ -685,6 +827,14 @@ sub viewuser
 	}
 }
 
+=pod
+
+=item C<deluser>
+
+Deletes a user.  The parameter is the user's 'field 0' value.
+
+=cut
+
 sub deluser
 {
 	my ($self, $field0) = @_;
@@ -697,7 +847,7 @@ sub deluser
 	my $resp = <STDIN>;
 
 	# If the response begins with a 'y' (or 'Y'), ie. 'yes' or 'y' or 'you better not!'...
-	if ($resp =~ /^y/i)
+	if ( $resp =~ /^[yY]/ )
 	{
 		open USER, "< " . $self->{userfile} or &croak("Unable to read userfile: $!");
 		my @userfile = <USER>;
@@ -720,11 +870,20 @@ sub deluser
 	}
 }
 
+=pod
+
+=item C<prune>
+
+Prunes the session file directory by deleting session files that have expired. 
+This can be called in CGI mode if '-cgiprune' is set to true.
+
+=cut
+
 sub prune
 {
 	my $self = shift;
 
-	&DenyCGI;
+	&DenyCGI unless ( $self->{cgiprune} );
 
 	my $pruned = 0;
 
@@ -745,30 +904,73 @@ sub prune
 	return $pruned;
 }
 
-#--- 'private' member functions
+=pod
+
+=back
+
+=head1 PRIVATE METHODS
+
+There are also some private methods.  Use of them by unauthorized dirrty 
+scripts is a federal offence in some jurisdictions, carrying a maximum sentence 
+of yearly noogies by yours-truly.  This may or may not be legal in your 
+country.
+
+=over 4
+
+=item C<GetUserData>
+
+Fetches a user's auth data from the user file.  The data fields are returned as 
+a list, in the order in which they appear in the data file.
+
+=cut
 
 sub GetUserData
 {
 	my ($self, $field0) = @_;
 
-	$field0 or return;
-	open (USER, "< " . $self->{userfile}) or return;
+	unless ( $field0 ) 
+	{
+		warn "Field0 not given";
+		return;
+	}
+	unless ( open( USER, "< " . $self->{userfile} ) ) 
+	{
+		warn "Couldn't open userfile";
+		return;
+	}
 
 	my @userdata;
-	while (<USER>)
+	my $fzero = $field0 . DELIMITER;
+	while ( <USER> )
 	{
-		next if (!/^$field0\|/i);
+		next if ( !/^$fzero/i );
 
 		# Field 0 found--get user data.
 		chop;
-		@userdata = split /\|/;
+		@userdata = split( DELIMITER );
 		last;
 	}
 	close USER;
-	return if (lc $userdata[0] ne lc $field0);
+	if ( lc $userdata[0] ne lc $field0 ) 
+	{
+		warn "Field 0 ($field0) doesn't match (" . join( ', ', @userdata ) . ")";
+		return;
+	}
 
 	return @userdata;
 }
+
+=pod
+
+=item C<PrintLoginForm>
+
+Prints the login form using either an C<HTML::Template> or a header and footer.
+
+This is called by C<check> when the user is not authenticated.
+
+This method hands off either to C<PLF_template> or to C<PLF_headerfooter>.
+
+=cut
 
 sub PrintLoginForm
 {
@@ -786,13 +988,22 @@ sub PrintLoginForm
 	}
 }
 
+=pod
+
+=item C<PLF_template>
+
+Prints the login form using an HTML::Template.  It uses the value of the 
+logintmpl property to get the template.  
+
+=cut
+
 sub PLF_template
 {
 	my ($self, $msg) = @_;
 
 	require HTML::Template;
 
-    # logintmpl can be one of three things (which are all true values):
+	# logintmpl can be one of three things (which are all true values):
     # 1. An HTML::Template object reference,
     # 2. A hash containing parameters for HTML::Template->new, or
     # 3. A filename (then logintmplpath can be the path parameter).
@@ -832,6 +1043,15 @@ sub PLF_template
 	);
 	print $template->output();
 }
+
+=pod
+
+=item C<PLF_headerfooter>
+
+Prints the login form using a header and footer.  It uses the values of the 
+loginheader and loginfooter properties.
+
+=cut
 
 sub PLF_headerfooter
 {
@@ -904,6 +1124,19 @@ END
 	}
 }
 
+=pod
+
+=item C<FormFields>
+
+Returns HTML code for placing existing CGI parameters on a form so that the 
+login process is transparent to the calling script.  
+
+For any single-valued parameters, it creates a hidden C<< <input> >> control, 
+and for any multi-valued parameters, it creates a hidden (i.e., 
+C<style="display: none">) C<< <select> >> control with all of its values.
+
+=cut
+
 sub FormFields
 {
 	my ($self) = shift;
@@ -934,6 +1167,14 @@ sub FormFields
 	return $formfields;
 }
 
+=pod
+
+=item C<CreateSessionFile>
+
+Creates a session file in the session file directory.  
+
+=cut
+
 sub CreateSessionFile
 {
 	my ($self, $field0) = @_;
@@ -941,7 +1182,9 @@ sub CreateSessionFile
 	my @chars = (0..9, 'A'..'Z');
 	my $sessfilename;
 
-	my $remoteaddr = $ENV{REMOTE_ADDR};
+	# Verify format and untaint.
+	$ENV{REMOTE_ADDR} =~ /([\dA-F\.:]+)/;		# IPv4 or IPv6 address.
+	my $remoteaddr = $1 || '';
 
 	do
 	{
@@ -957,9 +1200,32 @@ sub CreateSessionFile
 	return $sessfilename;
 }
 
-# Returns:	Field 0 value from session file if successful, 
-#			0 if session has expired, or
-#			undef if session file doesn't exist or can't be opened.
+=pod
+
+=item C<OpenSessionFile>
+
+Opens the session file and returns the user's id (field0) if successful.  
+
+The return value is one of three things:
+
+=over 4
+
+=item 1
+
+B<Field 0> value from session file if successful, 
+
+=item 2
+
+B<0> if the session has expired, or
+
+=item 3
+
+B<undef> if the session file doesn't exist or can't be opened.
+
+=back
+
+=cut
+
 sub OpenSessionFile
 {
 	my $self = shift;
@@ -986,14 +1252,30 @@ sub OpenSessionFile
 			my $field0 = <SESS>;
 			my $file_ra = <SESS>;
 			close SESS;
-			chomp $field0;
-			chomp $file_ra;
 
-			# Verify remote IP address.
+			# If $field0 has any invalid chars, return error.
+			# This also untaints $field0.
+			my $validchars = $self->{validchars};
+			if ( $field0 =~ /^([$validchars]+)$/ )
+			{
+				$field0 = $1;
+			}
+			else
+			{
+				warn "UserID [$field0] found in session file is invalid";
+				return undef;
+			}
+
+			$file_ra =~ /^(\S*?)$/;
+			$file_ra = $1;
+			# Verify remote IP address, if present in file.
+			# What this does is ensure that if the REMOTE_ADDR was available at 
+			# login time, it must be available now and must be the same.
 			if ( $file_ra and $file_ra ne $ENV{REMOTE_ADDR} )
 			{
 				# IP address doesn't match.
 				# Return error: unable to access session file.
+				warn "Address [$file_ra] found in session file does not match REMOTE_ADDR [" . $ENV{REMOTE_ADDR} . "]";
 				return undef;
 			}
 
@@ -1012,17 +1294,48 @@ sub OpenSessionFile
 	return undef;
 }
 
-#--- Helper functions (not members)
+=pod
 
-# Exits if run as CGI.
+=back
+
+=head1 HELPER FUNCTIONS (not members)
+
+Feel free to use and abuse these.  They just do dirty little jobs.
+
+=over 4
+
+=item C<DenyCGI>
+
+Exits if run as CGI.  This could be made a little more intelligent.  The 
+command-line methods call this function as their very first act.
+
+=cut
+
 sub DenyCGI
 {
-	if ($ENV{REQUEST_METHOD} || $ENV{REMOTE_ADDR})
+	if ( $ENV{GATEWAY_INTERFACE} || $ENV{REQUEST_METHOD} || $ENV{REMOTE_ADDR} )
 	{
-		print "Content-type: text/html\n\n<html><title>SORRY</title><body><h1>This cannot be run from the web.</h1><h2>GOOD-BYE!</h2></body></html>\n";
+		print <<ERRORDOC;
+Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html><head><title>Forbidden</title></head>
+<body><h1>Access Denied</h1><p>You are not allowed to access this page.</p></body>
+</html>
+ERRORDOC
 		exit;
 	}
 }
+
+=pod
+
+=item C<DoubleCrypt>
+
+Performs two crypt calls with the same salt, so that the limit of characters 
+in passwords is doubled from 8 to 16.  It's probably a good idea to use an MD5 
+hash or some other, more sophisticated alternative.
+
+=cut
 
 sub DoubleCrypt
 {
@@ -1038,6 +1351,76 @@ sub DoubleCrypt
 		return crypt($str, $salt) . crypt('', $salt);
 	}
 }
+
+=pod
+
+=item C<MD5Crypt>
+
+Performs an MD5 hash on the password given and returns the hash as a 24-byte 
+Base64 string of the hash.  Requires the Digest::MD5 module.
+
+This is used instead of DoubleCrypt if the -md5pwd option is set.
+
+=cut
+
+sub MD5Crypt
+{
+	my ( $str ) = @_;
+
+	require Digest::MD5;
+	return Digest::MD5->new->add( $str )->b64digest;
+}
+
+=pod
+
+=back
+
+=head1 NOTE ON SECURITY
+
+Any hidden fields such as passwords are sent over the network in clear 
+text, so anyone with low-level access to the network (such as an ISP 
+owner or a lucky/skilled hacker) could read the passwords and gain 
+access to your application.  C<CGI::Auth> has no control over this since 
+it is currently a server-side-only solution.
+
+If your application must be fully secured, an encryption layer such as 
+HTTPS should be used to encrypt the session so that passwords cannot be 
+snooped by unauthorized individuals.
+
+It would be adequate to use HTTPS only for the login process, and avoid the 
+overhead of encryption during the rest of the session.  But I expect that this 
+would require modification of this module.
+
+=head1 SEE ALSO
+
+L<CGI>, L<HTML::Template>
+
+=head1 BUGS
+
+C<CGI::Auth> doesn't use cookies, so it is left up to the script author to 
+ensure that auth data (i.e., the session file) is passed around consistently 
+through all links and entry forms.
+
+=head1 AUTHOR
+
+C. Chad Wallace, cmdrwalrus@canada.com
+
+If you have any suggestions, comments or bug reports, please send them to me.  
+I will be happy to hear them.
+
+=head1 COPYRIGHT AND LICENCE
+
+Copyright (c) 2001, 2002, 2003 C. Chad Wallace.
+All rights reserved.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED 
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF 
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+=cut
 
 # Return true when 'require'd.
 1;

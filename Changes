@@ -1,3 +1,5 @@
+$Id: Changes,v 1.5 2003/10/30 18:53:17 cmdrwalrus Exp $
+
 Revision history for CGI::Auth.
 
 2.2	Mon Aug 19, 2002
@@ -17,3 +19,9 @@ Revision history for CGI::Auth.
 2.4.2	5 August 2003
 	Added ability to specify options for HTML::Template, by passing -logintmpl either as a hashref or an existing HTML::Template object.
 	Also edited the POD a bit.
+
+2.4.3	30 October 2003
+	Added MD5 hashes for hidden data (i.e., passwords) instead of 'crypt'.  This is enabled with the '-md5pwd' config option and if enabled is in effect globally.  When the switch is made from crypted data to MD5 hashes, the user data file will need to be recreated.
+	Now allows CGI scripts to use the 'prune' function, if the '-cgiprune' option is given.
+	CGI::Simple is now supported--just pass a CGI::Simple object ref instead of a CGI one.  CGI::Simple is a drop-in replacement of CGI.pm with all of its CGI-related functionality but without the HTML generation features.
+	User data file delimiter character is no longer a pipe (|) because it is a regex special character.  The separator is now a colon (:), so user data files will need to be updated to reflect this--simply changing all pipes to colons should do the trick.

@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w    
 
+# $Id: 1.t,v 1.3 2003/10/30 19:42:29 cmdrwalrus Exp $
+
 use Test::Simple tests => 4;
 
 require CGI::Auth;
@@ -13,7 +15,7 @@ if ( open( USERDAT, '> auth/user.dat' ) )
 {
 	push @files, 'auth/user.dat';
 	print USERDAT <<'USERDAT';
-testing|HpPZfni0asUwwHpzbAVdwY50uY
+testing:HpPZfni0asUwwHpzbAVdwY50uY
 USERDAT
 	close( USERDAT );
 }

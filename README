@@ -1,4 +1,4 @@
-CGI::Auth version 2.4.2
+CGI::Auth version 2.4.3
 =======================
 
 CGI::Auth provides password authentication for web-based applications.  
@@ -37,6 +37,19 @@ CGI.pm version 2.0.
     CGI.pm's functionality, but I developed it with 2.7 and didn't want 
     to go too far back.  It's probably best to use the latest version 
     of CGI.pm anyway.
+
+ * OR * 
+
+CGI::Simple
+
+    This is a simpler alternative to CGI.pm.  It is smaller and faster, 
+    but includes all the basic CGI functionality.  What it doesn't 
+    include is the HTML shortcuts, and these are not needed by 
+    CGI::Auth.
+
+    However, CGI::Simple is newer than CGI.pm and hasn't been tested 
+    as thoroughly.  It will probably work just fine, but you might find 
+    a bug or two.
 
 NOTE ON SECURITY
 

@@ -1,17 +1,21 @@
 #!/usr/bin/perl
 
+# $Id: authman.pl,v 1.4 2003/10/02 06:30:10 cmdrwalrus Exp $
+
 require CGI::Auth;
 require AuthCfg;
 
-$AuthCfg::authcfg->{-admin} = 1;
+my $cfg = $AuthCfg::authcfg;
+$cfg->{-admin} = 1;
 
-my $userfile = $AuthCfg::authcfg->{-authdir} . "/user.dat";
+my $userfile = $cfg->{-authdir} . "/" . ( $cfg->{-userfile} || "user.dat" );
 unless ( -f $userfile )
 {
+	# Create the user data file.
 	open USERDAT, "> $userfile" and close USERDAT;
 }
 
-my $auth = new CGI::Auth( $AuthCfg::authcfg ) or die "CGI::Auth error";
+my $auth = new CGI::Auth( $cfg ) or die "CGI::Auth error";
 
 if ($ARGV[0] eq 'prune')
 {
@@ -34,6 +38,51 @@ Q - Quit.
 
 MENU
 
+# If not a member of CGI::Auth, just pass it an auth object reference.
+sub addprompt
+{
+	my $self = shift;
+
+    my @authfields = @{ $self->{authfields} };
+	print "Adding a new user.\n";
+    print scalar( @authfields ), " fields are needed:  ", join( ', ', map $_->{display}, @authfields ), ".\n\n";
+
+	my $validchars = $self->{validchars};
+	my @fields;
+	FIELD: for my $f ( @authfields )
+	{
+		my $notice = ( $f->{hidden} && !$self->{md5pwd} ) ? '16 characters or less; ' : '';
+		print "Enter " . $f->{display} . "(${notice}Leave blank to cancel) : ";
+		my $data = <STDIN>;
+
+		# Untaint, and remove newlines.
+		$data =~ /^(.*?)$/;
+		$data = $1;
+
+		# Cancel if nothing entered.
+		unless ( $data )
+        {
+            print "Cancelled.\n";
+            return 0;
+        }
+
+		# Check for non-valid characters.
+		if ( $data =~ /([^$validchars])/ )
+		{
+			print "Data entered contains an invalid character ($1).\n";
+			redo FIELD;
+		}
+
+		# Valid data.  So store it, and move on.
+		push @fields, $data;
+	}
+
+	print "Adding user '$fields[0]'.\n";
+	$auth->adduser( @fields );
+
+	return 1;
+}
+
 do
 {
 	print $menutext, "Option: ";
@@ -42,32 +91,7 @@ do
 	print "\n";
 	if ($option =~ /^a/i)
 	{
-		my ($un, $pw, $confirm);
-		
-		UN: {
-			print "User name to add: ";
-			$un = <STDIN>;
-			chomp $un; chomp $un;		# Two chomps because of the \r\n in Windows
-			if ($un =~ /\|/)
-			{
-				print "The user name cannot contain the '|' character.\n";
-				redo UN;
-			}
-		}
-			
-		PW: {
-			print "Password for user $un (16 characters or less): ";
-			$pw = <STDIN>;
-			chomp $pw; chomp $pw;		# Two chomps because of the \r\n in Windows
-			if (length $pw > 16)
-			{
-				print "Password must be 16 characters or less.\n";
-				redo PW;
-			}
-		}
-
-		print "Adding user '$un' with password '$pw'.\n";
-		$auth->adduser($un, $pw);
+        addprompt( $auth );
 	}
 	elsif ($option =~ /^l/i)
 	{
