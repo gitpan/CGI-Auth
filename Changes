@@ -14,3 +14,6 @@ Revision history for CGI::Auth.
 	Some documentation edits.
 	Added a simple test suite.
 
+2.4.2	5 August 2003
+	Added ability to specify options for HTML::Template, by passing -logintmpl either as a hashref or an existing HTML::Template object.
+	Also edited the POD a bit.

@@ -26,9 +26,9 @@ C<CGI::Auth> provides password authentication for web-based applications.  It
 uses server-based session files which are referred to by a parameter in all 
 links and forms inside the scripts guarded by C<CGI::Auth>.
 
-At the beginning of each script using Auth.pm, an C<CGI::Auth> object should be 
-created and its C<check> method called.  When this happens, C<check> checks for 
-a 'session_file' CGI parameter.  If that parameter exists and has a matching 
+At the beginning of each script, a C<CGI::Auth> object should be created and 
+its C<check> method called.  When this happens, C<check> checks for a 
+'session_file' CGI parameter.  If that parameter exists and has a matching 
 session file in the session directory, C<check> returns, and the rest of the 
 script can execute.
 
@@ -41,13 +41,13 @@ rest of the script.
 
 =head1 CREATING AND CONFIGURING
 
-Before anything can be done with Auth.pm, an C<Auth> object must be created:
+Before anything can be done with C<CGI::Auth>, an object must be created:
 
-    my $auth = new Auth(\%options);
+    my $auth = new CGI::Auth( \%options );
 
-The C<new> method creates and configures an C<Auth> object using parameters 
-that are passed via a hash reference that can/should contain the following 
-items (optional ones are indicated):
+The C<new> method creates and configures a C<CGI::Auth> object using 
+parameters that are passed via a hash reference that can/should contain the 
+following items (optional ones are indicated):
 
 =over 4
 
@@ -55,10 +55,11 @@ items (optional ones are indicated):
 
 I<(optional)>
 
-This parameter provides Auth with a CGI object reference so that the extra 
-overhead of creating another object can be avoided.  If your script is going to 
-use CGI.pm, it is most efficient to create the CGI object and pass it to Auth, 
-rather than both your script and Auth having to create separate objects.
+This parameter provides C<CGI::Auth> with a CGI object reference so that the 
+extra overhead of creating another object can be avoided.  If your script is 
+going to use CGI.pm, it is most efficient to create the CGI object and pass it 
+to C<CGI::Auth>, rather than both your script and Auth having to create 
+separate objects.
 
 =item C<-admin>
 
@@ -73,9 +74,9 @@ only allow command-line execution (execution from CGI will be aborted).
 I<(required)>
 
 Directory where Auth will look for its files.  In other words, if C<-sessdir>, 
-C<-userfile>, C<-logintmpl>, C<-loginheader> or C<-loginfooter> do not begin 
-with a slash (i.e., are not absolute paths), this directory will be prepended 
-to them.
+C<-userfile>, C<-logintmpl>, C<-loginheader> or C<-loginfooter> are scalars 
+and do not begin with a slash (i.e., are not absolute paths), this directory 
+will be prepended to them.
 
 =item C<-sessdir>
 
@@ -90,20 +91,38 @@ a user does not log out.
 I<(optional, default = 'user.dat')>
 
 File containing definitions of users, including login information and any extra 
-parameters.  This file will be created, edited and read by Auth.pm and its 
+parameters.  This file will be created, edited and read by C<CGI::Auth> and its 
 command-line administration tool.
 
 =item C<-logintmpl>
 
 I<(optional, excludes C<-loginheader> and C<-loginfooter> if present)>
 
-Template file for use with HTML::Template.  This file must contain a form for 
-the user to fill out, and it is recommended that the form not contain any 
-elements with names beginning with 'auth_', since these are reserved for 
-CGI::Auth fields.  
+Template for use with C<HTML::Template>.  The template can be given in one of 
+three ways:
 
-The template should include the following HTML::Template items.  These are 
-case-insensitive.  See the HTML::Template documentation for more information.
+=over 4
+
+=item 1
+
+An C<HTML::Template> object reference,
+
+=item 2
+
+A hash containing parameters for C<HTML::Template-E<gt>new>, or
+
+=item 3
+
+A filename (then C<-logintmplpath> can be the path parameter).
+
+=back
+
+The template must contain a form for the user to fill out, and it is 
+recommended that the form not contain any elements with names beginning with 
+'auth_', since these are reserved for C<CGI::Auth> fields.  
+
+The template should include the following C<HTML::Template> items.  These are 
+case-insensitive.  See the C<HTML::Template> documentation for more information.
 
 B<Template Variables>
 
@@ -159,6 +178,14 @@ field is hidden or not.
 =back
 
 =back
+
+=item C<-logintmplpath>
+
+I<(optional, default = [])>
+
+List of search path(s) for C<HTML::Template> files (the 'path' option).  This 
+is used only if C<-logintmpl> is a filename.  Otherwise, the path option must 
+be passed to C<HTML::Template-E<gt>new> directly.
 
 =item C<-loginheader>
 
@@ -260,40 +287,44 @@ inserting in a E<lt>FORME<gt>, e.g.:
 
 =head1 NOTE ON SECURITY
 
-Any hidden fields such as passwords are sent over the network in clear text, 
-so anyone with low-level access to the network (such as an ISP owner or a 
-lucky/skilled hacker) could read the passwords and gain access to your 
-application.  Auth.pm has no control over this since it is currently a 
-server-side-only solution.
+Any hidden fields such as passwords are sent over the network in clear 
+text, so anyone with low-level access to the network (such as an ISP 
+owner or a lucky/skilled hacker) could read the passwords and gain 
+access to your application.  CGI::Auth has no control over this since 
+it is currently a server-side-only solution.
 
-If your application must be fully secured, an encryption layer such as HTTPS 
-should be used to encrypt the session so that passwords cannot be snooped by 
-unauthorized individuals.
+If your application must be fully secured, an encryption layer such as 
+HTTPS should be used to encrypt the session so that passwords cannot be 
+snooped by unauthorized individuals.
 
 =head1 SEE ALSO
 
-C<CGI.pm>
+L<CGI>, L<HTML::Template>
 
 =head1 BUGS
 
-Auth.pm doesn't use cookies, so it is left up to the script author to ensure
-that auth data (i.e., the session file) is passed around consistently through 
-all links and entry forms.
+C<CGI::Auth> doesn't use cookies, so it is left up to the script author to 
+ensure that auth data (i.e., the session file) is passed around consistently 
+through all links and entry forms.
 
 =head1 AUTHOR
 
-Chad Wallace, cmdrwalrus@canada.com
+C. Chad Wallace, cmdrwalrus@canada.com
 
 If you have any suggestions, comments or bug reports, please send them to me.  
 I will be happy to hear them.
 
-=head1 COPYRIGHT
+=head1 COPYRIGHT AND LICENCE
 
-Copyright (c) 2001, 2002 Chad Wallace.
+Copyright (c) 2001, 2002, 2003 C. Chad Wallace.
 All rights reserved.
 
-This module may be distributed and/or modified under the same terms as Perl
-itself.
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED 
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF 
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 =cut
 
@@ -301,10 +332,9 @@ use Carp;
 
 use strict;
 
-# Variables defined by configuration file.
 use vars qw/$VERSION/;
 
-$VERSION = '2.4.1';
+$VERSION = '2.4.2';
 
 # Constructor
 sub new 
@@ -339,7 +369,11 @@ sub init
 	}
 
 	$self->{userfile} = $param->{-userfile};
-	unless ($self->{logintmpl} = $param->{-logintmpl})			# Either an HTML::Template template, 
+	if ($self->{logintmpl} = $param->{-logintmpl})			    # Either an HTML::Template template, 
+    {
+ 		$self->{logintmplpath} = $param->{-logintmplpath} || [];
+    }
+    else
 	{
 		$self->{loginheader} = $param->{-loginheader};			# or a header and footer.
 		$self->{loginfooter} = $param->{-loginfooter};
@@ -376,7 +410,7 @@ sub init
 
 	for (@{$self}{qw/sessdir userfile logintmpl loginheader loginfooter/})
 	{
-		if ($_ and not m{^/})
+		if ( $_ and not ref and not m{^/} )
 		{
 			$_ = $self->{authdir} . '/' . $_;
 		}
@@ -758,7 +792,22 @@ sub PLF_template
 
 	require HTML::Template;
 
-	my $template = new HTML::Template(filename => $self->{logintmpl});
+    # logintmpl can be one of three things (which are all true values):
+    # 1. An HTML::Template object reference,
+    # 2. A hash containing parameters for HTML::Template->new, or
+    # 3. A filename (then logintmplpath can be the path parameter).
+    my $template = $self->{logintmpl};
+    unless ( UNIVERSAL::isa( $template, 'HTML::Template' ) )
+    {
+        $template = new HTML::Template( 
+            UNIVERSAL::isa( $template, 'HASH' ) 
+            ? %{ $self->{logintmpl} } 
+            : ( 
+                filename => $template,
+                path => $self->{logintmplpath},
+            ) 
+        );
+    }
 
 	# Create parameters for Auth_Fields <TMPL_LOOP>.
 	my @fields = ();

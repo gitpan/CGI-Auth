@@ -3,3 +3,8 @@ Changes
 Makefile.PL
 MANIFEST
 README
+t/1.t
+extra/AuthCfg.pm
+extra/authman.pl
+extra/login.html
+extra/README
